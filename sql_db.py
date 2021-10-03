@@ -45,7 +45,7 @@ class sql:
     def itog_msg(self):
         mes = ''
         count_v = len(connection.execute(f"""select Id from variant  """).fetchall())
-        for i in range(1, count_v+1):
+        for i in range(1, (count_v+1 if count_v <= 3 else 4)):
             v = connection.execute(f"""select Id, LastName , FirstName, PersonUrl, Age, City 
                     from variant limit 1 OFFSET {i-1} """).fetchall()
             p = connection.execute(f"""select PhotosUrl from photos p

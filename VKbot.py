@@ -86,6 +86,6 @@ class Vkinder:
 
 
 
-if __name__ == '__main__':
-    vkbot = Vkinder(token=token)
-    vkbot.start_bot()
+# if __name__ == '__main__':
+#     vkbot = Vkinder(token=token)
+#     vkbot.start_bot()
