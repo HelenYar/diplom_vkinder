@@ -42,6 +42,24 @@ class sql:
     def insert_user(self, table_name, value_insert):
         connection.execute(f"""insert into {table_name} values({value_insert}); """)
 
+    def get_city_(self):
+        citi_id_bd = connection.execute(f"""select city_id from user_ where city_id = 0; """).fetchone()
+        return citi_id_bd
+
+    def get_age_(self):
+        age_bd = connection.execute(f"""select age from user_ where age = 0; """).fetchone()
+        return age_bd
+
+    def update_user(self, city_i, city_t):
+        connection.execute(f"""UPDATE user_ SET City_id = {city_i}, City = {f"'{city_t}'"}; """)
+
+    def update_user_a(self, age_):
+        connection.execute(f"""UPDATE user_ SET age = {age_}; """)
+
+    def user(self):
+        user_data = connection.execute(f"""select * from user_; """).fetchone()
+        return user_data
+
     def itog_msg(self):
         mes = ''
         count_v = len(connection.execute(f"""select Id from variant  """).fetchall())

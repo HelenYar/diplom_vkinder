@@ -12,7 +12,11 @@ class Vk:
         self.user_id = user_id
         self.params = {'access_token': token,  'v': '5.131'}
 
-
+    def get_city_msg(self, city_t):
+        user_url = self.url + 'database.getCities'
+        user_params = {'country_id': 1, 'q': city_t}
+        city_id_msg = (requests.get(user_url, params={**self.params, **user_params}).json())['response']['items'][0]['id']
+        return city_id_msg
 
     def get_user(self):
 
@@ -26,9 +30,9 @@ class Vk:
         user_id = user[0]['id']
         user_first_name = user[0]['first_name']
         user_last_name = user[0]['last_name']
-        user_age = int(datetime.datetime.now().strftime('%Y')) - int(user[0]['bdate'].split('.')[-1])
-        user_city_id = user[0]['city']['id']
-        user_city = user[0]['city']['title']
+        user_age = int(datetime.datetime.now().strftime('%Y')) - int(user[0]['bdate'].split('.')[-1] if 'bdate' in user[0] else 0)
+        user_city_id = (user[0]['city']['id'] if 'city' in user[0] else 0)
+        user_city = (user[0]['city']['title'] if 'city' in user[0] else "-")
         user_sex = user[0]['sex']
         user_data.append({'user_id': user_id, 'user_first_name': user_first_name,
                           'user_last_name': user_last_name, 'user_age': user_age,
@@ -36,14 +40,14 @@ class Vk:
         value_insert = f"{user_id}, '{user_last_name}', '{user_first_name}', {user_age}, {user_sex}, {user_city_id}, '{user_city}'"
         s = sql()
         s.insert_user('user_', value_insert)
-        # print(user_data)
-        return user_data
+        return
 
     def get_candidates(self):
         candidate = []
-        user_data = self.get_user()
+        s = sql()
+        user_data = s.user() # проверить что получается на выходе запроса
         c_url = self.url + 'users.search'
-        c_params = {'sex': (1 if user_data[0]['user_sex'] == 2 else 2), 'city': (user_data[0]['user_city_id']),
+        c_params = {'sex': (1 if user_data[4] == 2 else 2), 'city': (user_data[5]),
                        'count': 1000, 'fields': 'sex, city, relation, bdate'}
         candidates = requests.get(c_url, params={**self.params, **c_params}).json()
         candidates = candidates['response']['items']
@@ -57,10 +61,10 @@ class Vk:
             c_city = (c['city']['title'] if 'city' in c else '')
             c_sex = c['sex']
             c_relation = (c['relation'] if 'relation' in c else '')
-            c_user_id = user_data[0]['user_id']
+            c_user_id = user_data[0]
 
-            if c_city == user_data[0]['user_city'] and (c_relation == 6 or c_relation == 1) and \
-                         (abs(c_age - user_data[0]['user_age']) <= 3):
+            if c_city == user_data[6] and (c_relation == 6 or c_relation == 1) and \
+                         (abs(c_age - user_data[3]) <= 3):
                 candidate.append({'c_id': c_id, 'c_link': c_link, 'c_first_name': c_first_name,
                                   'c_last_name': c_last_name, 'c_age': c_age, 'c_city_id': c_city_id,
                                   'c_city': c_city,  'c_relation': c_relation, 'c_sex': c_sex, 'user_id': c_user_id})
@@ -68,7 +72,6 @@ class Vk:
                                f"{c_city_id}, '{c_city}', {c_relation}, {c_user_id}"
                 s = sql()
                 s.insert_user('VARIANT', value_insert)
-        # pprint(candidate)
         return candidate
 
     def get_photos(self):
