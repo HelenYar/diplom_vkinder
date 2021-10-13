@@ -1,82 +1,74 @@
-import sqlalchemy
-from psycopg2 import OperationalError
+import sqlalchemy as sq
+from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.ext.declarative import declarative_base
 from config import sql_name
+from psycopg2 import OperationalError
 
-engine = sqlalchemy.create_engine(sql_name)
-engine
-connection = engine.connect()
+Base = declarative_base()
 
-class sql:
+class Users(Base):
+    __tablename__ = 'USER'
+    Id_user = sq.Column(sq.Integer, unique=True)
+    LastName = sq.Column(sq.String, nullable=False)
+    FirstName = sq.Column(sq.String, nullable=False)
+    Age = sq.Column(sq.Integer, nullable=False)
+    City = sq.Column(sq.String, nullable=False)
+    id = sq.Column(sq.Integer, primary_key=True)
+    VARIANT = relationship('Variants')
 
-    def create_table(self):
-        connection.execute("""CREATE TABLE IF NOT EXISTS USER_(
-                Id INTEGER NOT NULL UNIQUE,
-                LastName VARCHAR(60) NOT NULL,
-                FirstName VARCHAR(60) NOT NULL,
-                Age INTEGER NOT NULL,
-                Sex INTEGER NOT NULL,
-                City_id INTEGER NOT NULL,
-                City VARCHAR(60) NOT NULL
-            ); """)
+    def __init__(self, user_id, user_last_name, user_first_name, user_age, user_city):
+        self.Id_user = user_id
+        self.LastName = user_last_name
+        self.FirstName = user_first_name
+        self.Age = user_age
+        self.City = user_city
 
-        connection.execute("""CREATE TABLE IF NOT EXISTS VARIANT(
-                Id INTEGER NOT NULL UNIQUE,
-                LastName VARCHAR(60) NOT NULL,
-                FirstName VARCHAR(60) NOT NULL,
-                PersonUrl VARCHAR(60) NOT NULL,
-                Age INTEGER NOT NULL,
-                Sex INTEGER NOT NULL,
-                City_id INTEGER NOT NULL,
-                City VARCHAR(60) NOT NULL,
-                Relation INTEGER NOT NULL,
-                User_id INTEGER references user_(Id) NOT NULL
-            ); """)
+class Variants(Base):
+    __tablename__ = 'VARIANT'
+    c_Id = sq.Column(sq.Integer, unique=True)
+    LastName = sq.Column(sq.String, nullable=False)
+    FirstName = sq.Column(sq.String, nullable=False)
+    PersonUrl = sq.Column(sq.String, nullable=False)
+    Age = sq.Column(sq.Integer, nullable=False)
+    City = sq.Column(sq.String, nullable=False)
+    User_id = sq.Column(sq.Integer, sq.ForeignKey('USER.Id_user'))
+    id = sq.Column(sq.Integer, primary_key=True)
+    PHOTO = relationship('Photos')
 
-        connection.execute("""CREATE TABLE IF NOT EXISTS PHOTOS(
-                PhotosUrl TEXT NOT null,
-                Likes INTEGER NOT NULL,
-                Var_id INTEGER references VARIANT(Id) NOT NULL,
-                Id SERIAL PRIMARY KEY
-            ); """)
+    def __init__(self, c_id, c_last_name, c_first_name, c_link, c_age, c_city, c_user_id):
+        self.c_Id = c_id
+        self.LastName = c_last_name
+        self.FirstName = c_first_name
+        self.PersonUrl = c_link
+        self.Age = c_age
+        self.City = c_city
+        self.User_id = c_user_id
 
-    def insert_user(self, table_name, value_insert):
-        connection.execute(f"""insert into {table_name} values({value_insert}); """)
 
-    def get_city_(self):
-        citi_id_bd = connection.execute(f"""select city_id from user_ where city_id = 0; """).fetchone()
-        return citi_id_bd
+class Photos(Base):
+    __tablename__ = 'PHOTO'
+    PhotosUrl = sq.Column(sq.String, nullable=False)
+    Var_id = sq.Column(sq.Integer, sq.ForeignKey('VARIANT.c_Id'))
+    Id = sq.Column(sq.Integer, primary_key=True)
 
-    def get_age_(self):
-        age_bd = connection.execute(f"""select age from user_ where age = 0; """).fetchone()
-        return age_bd
+    def __init__(self, photo,  photo_owner_id):
+        self.PhotosUrl = photo
+        self.Var_id = photo_owner_id
 
-    def update_user(self, city_i, city_t):
-        connection.execute(f"""UPDATE user_ SET City_id = {city_i}, City = {f"'{city_t}'"}; """)
 
-    def update_user_a(self, age_):
-        connection.execute(f"""UPDATE user_ SET age = {age_}; """)
+def create_db(sql_name):
+    engine = sq.create_engine(sql_name)
+    session = sessionmaker(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    return session
 
-    def user(self):
-        user_data = connection.execute(f"""select * from user_; """).fetchone()
-        return user_data
 
-    def itog_msg(self):
-        mes = ''
-        count_v = len(connection.execute(f"""select Id from variant  """).fetchall())
-        for i in range(1, (count_v+1 if count_v <= 3 else 4)):
-            v = connection.execute(f"""select Id, LastName , FirstName, PersonUrl, Age, City 
-                    from variant limit 1 OFFSET {i-1} """).fetchall()
-            p = connection.execute(f"""select PhotosUrl from photos p
-                    where var_id =(select Id from variant LIMIT 1  OFFSET {i-1} ) """).fetchall()
-            m = f'{v[0][1]} {v[0][2]}  {v[0][3]}\n' \
-                f'Возраст: {v[0][4]}\n' \
-                f'Cамые попумярные фото {p[0] if len(p)>=1 else ""} \n ' \
-                f'        {p[1]  if len(p)>=2 else ""} \n ' \
-                f'        {p[2]  if len(p)>=3 else ""} \n '
-            mes = mes + f'{m}\n'
-        return(mes)
+def clear_db(sql_name):
+    engine = sq.create_engine(sql_name)
+    connection = engine.connect()
+    delete_list = ("PHOTO", 'VARIANT', 'USER')
+    for entry in delete_list:
+        query_string = f"""DELETE FROM {entry};"""
+        connection.execute(query_string)
 
-    def clean_table(self):
-        connection.execute(f"""delete from photos; """)
-        connection.execute(f"""delete from variant; """)
-        connection.execute(f"""delete from user_; """)
+
