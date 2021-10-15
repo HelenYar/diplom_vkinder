@@ -1,7 +1,7 @@
 from VKbot import Vkinder
 from config import token, sql_name
 import sqlalchemy
-from sql_db import Users, Variants, Photos, create_db, clear_db
+from sql_db import Users, Variants, Photos, create_db
 
 
 if __name__ == '__main__':

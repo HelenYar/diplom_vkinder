@@ -5,12 +5,16 @@ import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 from config import token, token_user, sql_name
 from VK import Vk
+from sql_db import clean_table
 import os
 
 class Vkinder:
+    i = 1
+
     def __init__(self, token):
         self.vk = vk_api.VkApi(token=token)
         self.longpoll = VkLongPoll(self.vk)
+
 
     def write_msg(self, user_id, message):
         self.vk.method('messages.send', {'user_id': user_id, 'message': message, 'random_id': randrange(10 ** 7), })
@@ -78,21 +82,30 @@ class Vkinder:
                     vk.update_user_a(age_)
                     step_action += 1
 
-
-
             if step_action == 6:
-                msg = vk.itog_msg(session_maker)
-
+                i = self.i
+                msg = vk.itog_msg(session_maker, i)
                 self.write_msg(user_id, f"{msg}")
-                self.write_msg(user_id, 'Для выхода  введите : Выход ')
+                self.write_msg(user_id, 'Если хотите продолжить введите: Дальше,\n'
+                                        'Для выхода  введите : Выход ')
                 step_action += 1
 
             if step_action == 7:
+                if user_msg == 'дальше':
+                    self.i += 3
+                    i = self.i
+                    msg = vk.itog_msg(session_maker, i)
+                    self.write_msg(user_id, f"{msg}")
+                    self.write_msg(user_id, 'Если хотите продолжить введите: Дальше \n'
+                                            'Для выхода  введите : Выход ')
                 if user_msg == 'выход':
                     self.write_msg(user_id, 'Пока')
                     os.remove("user_file.json")
                     # os.remove("candidate_file.json")
+                    clean_table(sql_name)
                     sys.exit()
+
+
 
 
 

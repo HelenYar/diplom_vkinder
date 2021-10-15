@@ -2,6 +2,7 @@ import sqlalchemy as sq
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from config import sql_name
+
 from psycopg2 import OperationalError
 
 Base = declarative_base()
@@ -62,13 +63,19 @@ def create_db(sql_name):
     Base.metadata.create_all(bind=engine)
     return session
 
-
-def clear_db(sql_name):
+def clean_table(sql_name):
     engine = sq.create_engine(sql_name)
     connection = engine.connect()
-    delete_list = ("PHOTO", 'VARIANT', 'USER')
-    for entry in delete_list:
-        query_string = f"""DELETE FROM {entry};"""
-        connection.execute(query_string)
+    connection.execute(f"""drop table "PHOTO";""")
+    connection.execute(f"""drop table "VARIANT";""")
+    connection.execute(f"""drop table "USER";""")
+    return
+# def clear_db(sql_name):
+#     engine = sq.create_engine(sql_name)
+#     connection = engine.connect()
+#     delete_list = ("PHOTO", 'VARIANT', 'USER')
+#     for entry in delete_list:
+#         query_string = f"""DELETE FROM {entry};"""
+#         connection.execute(query_string)
 
 

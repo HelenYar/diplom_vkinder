@@ -62,7 +62,8 @@ class Vk:
         c_url = self.url + 'users.search'
         # 'city': (user_data[0]['user_city_id']
         c_params = {'sex': (1 if user_data[0]['user_sex'] == 2 else 2), 'hometown': (user_data[0]['user_city']),
-                       'status': '6', 'count': 200, 'has_photo': '1', 'fields': 'sex, city, relation, bdate'}
+                   'status': '6', 'count': 150, 'has_photo': '1', 'is_closed': 'False',
+                   'fields': 'sex, city, relation, bdate'}
         candidates = requests.get(c_url, params={**self.params, **c_params}).json()['response']['items']
         time.sleep(0.3)
 
@@ -92,9 +93,10 @@ class Vk:
             photos_dict = {}
             c_id = c_['c_id']
             get_photo_url = self.url + 'photos.get'
-            get_photo_params = {'owner_id': c_id, 'album_id': 'profile', 'count': 200, 'extended': '1'}
-            photos = requests.get(get_photo_url, params={**self.params, **get_photo_params}).json()['response']['items']
+            get_photo_params = {'owner_id': c_id, 'album_id': 'profile', 'count': 150, 'extended': '1'}
+            photos = requests.get(get_photo_url, params={**self.params, **get_photo_params}).json()
             time.sleep(0.3)
+            photos = photos['response']['items']
 
             for photo in photos:
                 photo_owner_id = photo['owner_id']
@@ -112,52 +114,68 @@ class Vk:
             candidate_photo.setdefault(photo_owner_id, list(best_photos_dict.values()))
         return candidate_photo
 
-
-    def itog_msg(self, session_maker):
+    def itog_msg(self, session_maker, i):
         candidate = self.get_candidates()
         candidate_photo = self.get_photos()
         with open('user_file.json', encoding='utf-8') as f:
             user_data = json.load(f)
         user = Users(user_data[0]['user_id'], user_data[0]['user_last_name'], user_data[0]['user_first_name'],
                      user_data[0]['user_age'], user_data[0]['user_city'])
+        if i == 1:
+            Vk.dump_user(self, session_maker, user)
+
         mes = ''
         count_v = len(candidate)
-        for i in range(1, (count_v + 1 if count_v <= 3 else 4)):
-            v = candidate[i - 1]
-            var = Variants(v['c_id'], v['c_last_name'], v['c_first_name'], v['c_link'], v['c_age'],
-                           v['c_city'], v['user_id'])
-            if session_maker:
-                # если есть доступ к базе - запрос, чтобы избежать повтор
-                already_in_db = session_maker().query(Users).filter(Users.Id_user == v['c_id']).first()
-            else:
-                already_in_db = False
+        if i <= count_v:
+            for i in range(i, (count_v - i if count_v - i <= 3 else i+3)):
+                v = candidate[i-1]
+                var = Variants(v['c_id'], v['c_last_name'], v['c_first_name'], v['c_link'], v['c_age'],
+                               v['c_city'], v['user_id'])
+                if session_maker:
+                    # если есть доступ к базе - запрос, чтобы избежать повтор
+                    already_in_db = session_maker().query(Variants).filter(Variants.c_Id == v['c_id']).first()
+                else:
+                    already_in_db = False
+                if already_in_db:
+                    i = i + 3
 
-            if not already_in_db:
-                ph = candidate_photo[candidate[i - 1]['c_id']]
-                m = f'{v["c_first_name"]} {v["c_last_name"]}  {v["c_link"]}\n' \
-                    f'Возраст: {v["c_age"]}\n' \
-                    f'Cамые попумярные фото {ph} \n '
-                mes = mes + f'{m}\n'
+                if not already_in_db:
+                    ph = candidate_photo[candidate[i-1]['c_id']]
+                    m = f'{v["c_first_name"]} {v["c_last_name"]}  {v["c_link"]}\n' \
+                        f'Возраст: {v["c_age"]}\n' \
+                        f'Cамые попумярные фото {ph} \n '
+                    mes = mes + f'{m}\n'
 
-                for p in ph:
-                    p_ = Photos(p, candidate[i - 1]['c_id'])
-                    Vk.dump_file(self, session_maker, user, var, p_)  #  запись в базу, если доступно
+                    for p in ph:
+                        p_ = Photos(p, candidate[i - 1]['c_id'])
+                        Vk.dump_var(self, session_maker, var, p_)  # запись в базу, если доступно
 
-            if not session_maker:  # если база недоступна - дамп в файл
-                with open("candidate_file.json", "a", encoding='utf-8') as f:
-                    json.dump(v, f, ensure_ascii=False)
-        return mes
+                if not session_maker:  # если база недоступна - дамп в файл
+                    with open("candidate_file.json", "a", encoding='utf-8') as f:
+                        json.dump(v, f, ensure_ascii=False)
+            return mes
+        else:
+            mes = "по вашим параметрам больше нет вариантов"
+            return mes
 
-    def dump_file(self, session_maker, user, var, p_):
+
+    def dump_var(self, session_maker, var, p_):
         res = False
         if session_maker:
             session = session_maker()
             session.add(p_)
             session.add(var)
-            session.add(user)
+            # session.add(user)
             session.commit()
             res = True
         return res
 
-
+    def dump_user(self, session_maker, user):
+        res = False
+        if session_maker:
+            session = session_maker()
+            session.add(user)
+            session.commit()
+            res = True
+        return res
 
